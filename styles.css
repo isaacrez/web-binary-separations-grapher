@@ -1,0 +1,17 @@
+
+body {
+	text-align: center;
+	font-family: Arial;
+}
+
+#main_content {
+	display: grid;
+	width: 600px;
+	margin: auto;
+	background-color: lightblue;
+}
+
+#chart_storage {
+	border-width: 1px;
+	border-color: black;
+}
