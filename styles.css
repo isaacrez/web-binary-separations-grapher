@@ -6,7 +6,7 @@ body {
 
 #main_content {
 	display: grid;
-	width: 600px;
+	width: 800px;
 	margin: auto;
 	background-color: lightblue;
 }

@@ -98,9 +98,11 @@ class VaporLiquidEquilibria {
 		this._calculateVaporLiquidEquilibria();
 	};
 
-	get tempRange () {return this._tempRange};
-	get liquidFraction () {return this._xRange};
-	get vaporFraction () {return this._yRange};
+	get temperatureRange () {return this._temperatureRange};
+	get T_x_component () {return this._T_x_component};
+	get T_y_component () {return this._T_y_component};
+	get VLE_x_component () {return this._VLE_x_component};
+	get VLE_y_component () {return this._VLE_y_component};
 
 	_calculateVaporLiquidEquilibria () {
 		/* 	Generates the x and y values for various temperatures between the chemical's
@@ -120,9 +122,14 @@ class VaporLiquidEquilibria {
 			lightVaporFraction.push(currVaporFrac);
 		}
 
-		this._tempRange = temperatureRange;
-		this._xRange = lightLiquidFraction;
-		this._yRange = lightVaporFraction;
+		[lightLiquidFraction, lightVaporFraction] = convertToLinspace(lightLiquidFraction, lightVaporFraction);
+
+		this._temperatureRange = temperatureRange;
+		this._T_x_component = lightLiquidFraction;
+		this._T_y_component = lightVaporFraction;
+
+		this._VLE_x_component = [...lightLiquidFraction].reverse();
+		this._VLE_y_component = [...lightVaporFraction].reverse();
 
 	}
 
@@ -164,13 +171,160 @@ class Chemical {
 }
 
 function linspace(initValue, finalValue, elementCount) {
-	let array = [];
+	let array = new Array(elementCount);
 	let stepsize = (finalValue - initValue) / (elementCount - 1);
 	for (let i = 0; i < elementCount; i++){
-		array.push(initValue + stepsize * i);
+		array[i] = initValue + stepsize * i;
 	}
 
 	return array;
+}
+
+function convertToLinspace(xArray, yArray) {
+	/* Converts a pair of coupled arrays to linspace for clean plotting */
+	let n = xArray.length;
+	let lowerBound = xArray[0];
+	let upperBound = xArray[n - 1];
+
+	let newXArray = linspace(lowerBound, upperBound, n);
+	let newYArray = new Array(n);
+
+	for (let i = 0; i < n; i++){
+		newYArray[i] = linearlyInterpolate(newXArray[i], xArray, yArray);
+	}
+
+	return [newXArray, newYArray];
+
+}
+
+function linearlyInterpolate(x, xArray, yArray, index=0) {
+
+	console.log("Given: " + x);
+	// Assumes bounding within 0 to 1
+	if (x < 0) {console.log("Returning: " + 0); return 0};
+	if (1 < x) {console.log("Returning: " + 1); return 1};
+
+	if (xArray.length != yArray.length) {
+		throw new Error('Arrays must be same length');
+	}
+
+	let n = xArray.length;
+	let i = index;
+	for (i; i < n; i++) {
+		// Stop immediately after we find a higher value
+		if (xArray[i] < x) {
+			break
+		}
+	}
+
+	let x0 = xArray[i-1];
+	let x1 = xArray[i];
+	let y0 = yArray[i-1];
+	let y1 = yArray[i];
+
+	let y = y0 + (x - x0) * (y1 - y0) / (x1 - x0);
+	console.log("Returning: " + y);
+	return y;
+
+}
+
+function createTxy(VLE) {
+	let context = document.getElementById('myChart').getContext('2d');
+	let myChart = new Chart(context, {
+	    type: 'line',
+
+	    // The data for our dataset
+	    data: {
+	        labels: VLE.temperatureRange,
+	        datasets: [{
+	            label: 'Liquid Curve',
+	            borderColor: 'rgb(0, 0, 255)',
+	            backgroundColor: 'rgba(0, 0, 0, 0)',
+	            data: VLE.T_x_component,
+	        },
+	        {
+	        	label: 'Vapor Curve',
+	        	borderColor: 'rgb(255, 0, 0)',
+	            backgroundColor: 'rgba(0, 0, 0, 0)',
+	        	data: system.VLE.T_y_component,
+	        }],
+	    },
+
+	   	options: {
+	   		elements: {
+	   			// Remove points from the line
+	   			point: {
+	   				radius: 0,
+	   			}
+	   		},
+
+	   		scales: {
+	   			xAxes: [{
+	   				ticks: {
+	   					// Make the display more human-friendly
+	   					callback: function(value, index, values) {
+	   						if (index % 5 != 0) {
+	   							display: false
+	   						}
+	   						return Math.round(value * 100) / 100 + ' K';
+	   					},
+	   					// Limit the number of temperatures displayed
+	   					maxTicksLimit: 10,
+	   				}
+	   			}]
+	   		}
+	   	}
+   	})
+}
+
+function createVLE(VLE) {
+	let context = document.getElementById('myChart').getContext('2d');
+	let myChart = new Chart(context, {
+	    type: 'line',
+
+	    // The data for our dataset
+	    data: {
+	        labels: VLE.VLE_x_component,
+	        datasets: [{
+	        	label: 'VLE',
+	        	borderColor: 'rgb(255, 0, 0)',
+	            backgroundColor: 'rgba(0, 0, 0, 0)',
+	        	data: VLE.VLE_y_component,
+	        },
+	        {
+	        	label: 'Diagonal',
+	        	borderColor: 'rgb(0, 0, 0)',
+	        	backgroundColor: 'rgba(0, 0, 0, 0)',
+	        	data: VLE.VLE_x_component,
+	        }],
+	    },
+
+	   	options: {
+	   		elements: {
+	   			// Remove points from the line
+	   			point: {
+	   				radius: 0,
+	   			}
+	   		},
+
+	   		scales: {
+	   			xAxes: [{
+	   				ticks: {
+	   					// Make the display more human-friendly
+	   					callback: function(value, index, values) {
+	   						return Math.round(value * 100) / 100;
+	   					},
+	   				}
+	   			}],
+	   			yAxes: [{
+	   				ticks: {
+	   					min: 0,
+	   					max: 1
+	   				}
+	   			}]
+	   		}
+	   	}
+   	})
 }
 
 const chemicals = {};
@@ -181,38 +335,6 @@ chemicals['n-pentane'] = new Chemical('n-pentane',15.8333,2477.07,-39.94);
 
 tower = new DistillationTower();
 system = new BinarySystem(chemicals['water'], chemicals['n-butane'], tower);
-//system.lightChemical = chemicals['n-pentane'];
+system.heavyChemical = chemicals['n-pentane'];
 
-function createGraph() {
-	let context = document.getElementById('myChart').getContext('2d');
-	let myChart = new Chart(context, {
-	    type: 'line',
-
-	    // The data for our dataset
-	    data: {
-	        labels: system.VLE.tempRange,
-	        datasets: [{
-	            label: 'Liquid Curve',
-	            borderColor: 'rgb(0, 0, 255)',
-	            backgroundColor: 'rgba(0, 0, 0, 0)',
-	            data: system.VLE.liquidFraction,
-	        },
-	        {
-	        	label: 'Vapor Curve',
-	        	borderColor: 'rgb(255, 0, 0)',
-	            backgroundColor: 'rgba(0, 0, 0, 0)',
-	        	data: system.VLE.vaporFraction,
-	        }],
-	    },
-
-	   	options: {
-	   		elements: {
-	   			point: {
-	   				radius: 0,
-	   			}
-	   		}
-	   	}
-   	})
-}
-
-createGraph()
+createVLE(system.VLE);
