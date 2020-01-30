@@ -2,15 +2,43 @@
 console.log('Program started...')
 //require('chart.js')
 
+class Distillation {
+	/* Handles distillation calculations, including McCabe Thiele steps */
+
+	constructor (binarySystem, towerSpecs) {
+		this._binarySystem = binarySystem;
+		this._towerSpecs = towerSpecs;
+		this._stepPoints = this.generateSteps();
+	}
+
+	generateSteps() {
+		VLE = this._BinarySystem.VLE;
+		let xStep = this._towerSpecs.xD;
+		let yStep = this._towerSpecs.xD;
+		let c = 0;
+
+		while (this._towerSpecs.xB < xStep && c < 100) {
+			
+			c++;
+		}
+
+	}
+
+	applyMurphreeEfficiency(yEquilibrium, yOP) {
+		return this._towerSpecs.murphree * (yEquilibrium - yOP) + yOP;
+	}
+
+
+}
+
 class BinarySystem {
 
-	constructor (chemical_1, chemical_2, distillation_tower) {
+	constructor (chemical_1, chemical_2) {
 		/* 	Creates a system of two chemicals, organized based on boiling points,
 			then generates the vapor liquid equilibrium information */
 		this._lightChemical = chemical_1;
 		this._heavyChemical = chemical_2;
 		this._ensureCorrectChemicalLabels();
-		this.tower = distillation_tower;
 		this.VLE = new VaporLiquidEquilibria(this._lightChemical, this._heavyChemical);
 
 	}
@@ -39,10 +67,11 @@ class BinarySystem {
 
 class DistillationTower {
 
-	constructor (xD=0.95, xF=0.4, xB=0.2, murphree=1.0){
+	constructor (xD=0.95, xF=0.4, xB=0.2, R=1.0, murphree=1.0){
 		this._xD = xD;
 		this._xF = xF;
 		this._xB = xB;
+		this._R = R;
 		this._murphree = murphree;
 	}
 
@@ -70,12 +99,33 @@ class DistillationTower {
 		}
 	}
 
+	set R(_R) {this._R = R}
+
 	set murphree(newMurphree) {
 		if (0 < murphree && murphree <= 1) {
 			this._murphree = murphree;
 		} else {
 			console.log("Failed to set new murphree efficiency");
 		}
+	}
+
+	get xD() {return this._xD}
+	get xF() {return this._xF}
+	get xB() {return this._xB}
+	get R()  {return this._R}
+	get murphree() {return this._murphree}
+
+	calculateOPParameters() {
+		let m = {};
+		let b = {};
+		m['rectifying'] = this._R / (this._R + 1);
+		b['rectifying'] = this._xD / (this._R + 1);
+
+		let transitionY = m['rectifying'] * self._xF + b['rectifying'];
+		m['stripping'] = (transitionY - this._xB) / (this._xF - this._xB);
+		b['stripping'] = this._xB * (1 - m['stripping']);
+
+		return [m, b]
 	}
 
 }
@@ -99,17 +149,15 @@ class VaporLiquidEquilibria {
 	};
 
 	get temperatureRange () {return this._temperatureRange};
-	get T_x_component () {return this._T_x_component};
-	get T_y_component () {return this._T_y_component};
-	get VLE_x_component () {return this._VLE_x_component};
-	get VLE_y_component () {return this._VLE_y_component};
+	get lightLiquidFractions () {return this._xFractions};
+	get lightvaporFractions () {return this._yFractions};
 
 	_calculateVaporLiquidEquilibria () {
 		/* 	Generates the x and y values for various temperatures between the chemical's
 		   	boiling points */
 		let lowerBP = this._lightChemical.boilingPoint;
 		let upperBP = this._heavyChemical.boilingPoint;
-		let temperatureRange = linspace(lowerBP, upperBP, 100);
+		let temperatureRange = linspace(lowerBP, upperBP, 121);
 		let lightLiquidFraction = [];
 		let lightVaporFraction = [];
 
@@ -122,14 +170,9 @@ class VaporLiquidEquilibria {
 			lightVaporFraction.push(currVaporFrac);
 		}
 
-		[lightLiquidFraction, lightVaporFraction] = convertToLinspace(lightLiquidFraction, lightVaporFraction);
-
 		this._temperatureRange = temperatureRange;
-		this._T_x_component = lightLiquidFraction;
-		this._T_y_component = lightVaporFraction;
-
-		this._VLE_x_component = [...lightLiquidFraction].reverse();
-		this._VLE_y_component = [...lightVaporFraction].reverse();
+		this._xFractions = lightLiquidFraction;
+		this._yFractions = lightVaporFraction;
 
 	}
 
@@ -145,6 +188,16 @@ class VaporLiquidEquilibria {
 		// Based on Raoult's law
 		let lightSatPressure = this._lightChemical.calculateSatPressure(temperature);
 		return liquidFraction * lightSatPressure / 760;
+	}
+
+	getPointsVLE() {
+		return convertArrayToPoints(this._xFractions, this._yFractions);
+	}
+
+	getPointsTxy() {
+		let liquidData = convertArrayToPoints(this._temperatureRange, this._xFractions);
+		let vaporData = convertArrayToPoints(this._temperatureRange, this._yFractions);
+		return [liquidData, vaporData];
 	}
 
 }
@@ -170,6 +223,19 @@ class Chemical {
 
 }
 
+function convertArrayToPoints(xArray, yArray) {
+	let pointArray = [];
+	for (let i = 0; i < xArray.length; i++) {
+		let point = {
+			x: xArray[i],
+			y: yArray[i]
+		};
+		pointArray.push(point);
+	}
+	return pointArray;
+}
+
+
 function linspace(initValue, finalValue, elementCount) {
 	let array = new Array(elementCount);
 	let stepsize = (finalValue - initValue) / (elementCount - 1);
@@ -180,29 +246,11 @@ function linspace(initValue, finalValue, elementCount) {
 	return array;
 }
 
-function convertToLinspace(xArray, yArray) {
-	/* Converts a pair of coupled arrays to linspace for clean plotting */
-	let n = xArray.length;
-	let lowerBound = xArray[0];
-	let upperBound = xArray[n - 1];
-
-	let newXArray = linspace(lowerBound, upperBound, n);
-	let newYArray = new Array(n);
-
-	for (let i = 0; i < n; i++){
-		newYArray[i] = linearlyInterpolate(newXArray[i], xArray, yArray);
-	}
-
-	return [newXArray, newYArray];
-
-}
-
 function linearlyInterpolate(x, xArray, yArray, index=0) {
 
-	console.log("Given: " + x);
 	// Assumes bounding within 0 to 1
-	if (x < 0) {console.log("Returning: " + 0); return 0};
-	if (1 < x) {console.log("Returning: " + 1); return 1};
+	if (x < 0) {return 0};
+	if (1 < x) {return 1};
 
 	if (xArray.length != yArray.length) {
 		throw new Error('Arrays must be same length');
@@ -223,108 +271,93 @@ function linearlyInterpolate(x, xArray, yArray, index=0) {
 	let y1 = yArray[i];
 
 	let y = y0 + (x - x0) * (y1 - y0) / (x1 - x0);
-	console.log("Returning: " + y);
 	return y;
 
 }
 
-function createTxy(VLE) {
-	let context = document.getElementById('myChart').getContext('2d');
-	let myChart = new Chart(context, {
-	    type: 'line',
+class Plotter {
 
-	    // The data for our dataset
-	    data: {
-	        labels: VLE.temperatureRange,
-	        datasets: [{
-	            label: 'Liquid Curve',
-	            borderColor: 'rgb(0, 0, 255)',
-	            backgroundColor: 'rgba(0, 0, 0, 0)',
-	            data: VLE.T_x_component,
-	        },
-	        {
-	        	label: 'Vapor Curve',
-	        	borderColor: 'rgb(255, 0, 0)',
-	            backgroundColor: 'rgba(0, 0, 0, 0)',
-	        	data: system.VLE.T_y_component,
-	        }],
-	    },
+	constructor() {
+		this.context = document.getElementById('myChart').getContext('2d');
+	}
 
-	   	options: {
-	   		elements: {
-	   			// Remove points from the line
-	   			point: {
-	   				radius: 0,
-	   			}
-	   		},
+	baseConfiguration(numOfDatasets=1) {
+		let config = {
+			type: 'scatter',
 
-	   		scales: {
-	   			xAxes: [{
-	   				ticks: {
-	   					// Make the display more human-friendly
-	   					callback: function(value, index, values) {
-	   						if (index % 5 != 0) {
-	   							display: false
-	   						}
-	   						return Math.round(value * 100) / 100 + ' K';
-	   					},
-	   					// Limit the number of temperatures displayed
-	   					maxTicksLimit: 10,
-	   				}
-	   			}]
-	   		}
-	   	}
-   	})
-}
+			data: {
+				datasets: []
+			},
 
-function createVLE(VLE) {
-	let context = document.getElementById('myChart').getContext('2d');
-	let myChart = new Chart(context, {
-	    type: 'line',
+			options: {
+				elements: {
+					point: {
+						radius: 0,
+					}
+				},
+				scales: {
+					xAxes: [{
+						ticks: {
+							min: 0,
+							max: 1,
+							maxTicksLimit: 11
+						}
+					}],
+					yAxes: [{
+						ticks: {
+							min: 0,
+							max: 1,
+							maxTicksLimit: 11
+						}
+					}]
+				}
+			}		
+		};
 
-	    // The data for our dataset
-	    data: {
-	        labels: VLE.VLE_x_component,
-	        datasets: [{
-	        	label: 'VLE',
-	        	borderColor: 'rgb(255, 0, 0)',
-	            backgroundColor: 'rgba(0, 0, 0, 0)',
-	        	data: VLE.VLE_y_component,
-	        },
-	        {
-	        	label: 'Diagonal',
-	        	borderColor: 'rgb(0, 0, 0)',
-	        	backgroundColor: 'rgba(0, 0, 0, 0)',
-	        	data: VLE.VLE_x_component,
-	        }],
-	    },
+		for (let i = 0; i < numOfDatasets; i++){
+			config['data']['datasets'].push(this.templateDataSet());
+		}
 
-	   	options: {
-	   		elements: {
-	   			// Remove points from the line
-	   			point: {
-	   				radius: 0,
-	   			}
-	   		},
+		return config;
+	}
 
-	   		scales: {
-	   			xAxes: [{
-	   				ticks: {
-	   					// Make the display more human-friendly
-	   					callback: function(value, index, values) {
-	   						return Math.round(value * 100) / 100;
-	   					},
-	   				}
-	   			}],
-	   			yAxes: [{
-	   				ticks: {
-	   					min: 0,
-	   					max: 1
-	   				}
-	   			}]
-	   		}
-	   	}
-   	})
+	templateDataSet() {
+		return {
+			borderColor: 'red',
+			backgroundColor: 'transparent',
+			showLine: true,
+			borderWidth: 1
+		}
+	}
+
+	plotTxy(objVLE) {
+		let config = this.baseConfiguration(2);
+		let Txy_data = objVLE.getPointsTxy();
+		let Tx = Txy_data[0];
+		let Ty = Txy_data[1];
+
+		config['data']['datasets'][0]['label'] = 'Liquid';
+		config['data']['datasets'][0]['data'] = Tx;
+		config['data']['datasets'][0]['borderColor'] = 'blue'
+
+		config['data']['datasets'][1]['label'] = 'Vapor';
+		config['data']['datasets'][1]['data'] = Ty;
+
+		config['options']['scales']['xAxes'][0]['ticks']['min'] = Tx[0]['x'];
+		config['options']['scales']['xAxes'][0]['ticks']['max'] = Tx[Tx.length - 1]['x'];
+
+		let myChart = new Chart(this.context, config);
+	}
+
+	plotVLE(objVLE) {
+		let config = this.baseConfiguration();
+
+		config['data']['datasets'][0]['label'] = 'VLE';
+		config['data']['datasets'][0]['data'] = objVLE.getPointsVLE();
+
+		let myChart = new Chart(this.context, config);
+	}
+
 }
 
 const chemicals = {};
@@ -337,4 +370,6 @@ tower = new DistillationTower();
 system = new BinarySystem(chemicals['water'], chemicals['n-butane'], tower);
 system.heavyChemical = chemicals['n-pentane'];
 
-createVLE(system.VLE);
+
+let plt = new Plotter();
+plt.plotTxy(system.VLE);
