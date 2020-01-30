@@ -18,14 +18,31 @@ class Distillation {
 		let c = 0;
 
 		while (this._towerSpecs.xB < xStep && c < 100) {
-			
+
 			c++;
 		}
 
 	}
 
-	applyMurphreeEfficiency(yEquilibrium, yOP) {
+	getEffectiveY(yEquilibrium, yOP) {
 		return this._towerSpecs.murphree * (yEquilibrium - yOP) + yOP;
+	}
+
+	getOperatingY(x) {
+		let xF = this._towerSpecs.xF;
+		let xB = this._towerSpecs.xB;
+
+		if (xF < x) {
+			var m = this._towerSpecs.m['rectifying'];
+			var b = this._towerSpecs.b['rectifying'];
+		} else if (xB < x) {
+			var m = this._towerSpecs.m['stripping'];
+			var b = this._towerSpecs.b['stripping']
+		} else {
+			return x;
+		}
+
+		return m*x + b;
 	}
 
 
@@ -73,11 +90,16 @@ class DistillationTower {
 		this._xB = xB;
 		this._R = R;
 		this._murphree = murphree;
+
+		this.m = {};
+		this.b = {};
+		this.calculateOperatingParameters();
 	}
 
 	set xD(xD) {
 		if (this._xF < xD && xD <= 1) {
 			this._xD = xD;
+			this.calculateOperatingParameters();
 		} else {
 			console.log("Failed to set new xD");
 		}
@@ -86,6 +108,7 @@ class DistillationTower {
 	set xF(xF) {
 		if (this._xB < xF && xF < this._xD) {
 			this._xF = xF;
+			this.calculateOperatingParameters();
 		} else {
 			console.log("Failed to set new xF");
 		}
@@ -94,12 +117,16 @@ class DistillationTower {
 	set xB(xB) {
 		if (0 < xB && xB < this._xF) {
 			this._xB = xB;
+			this.calculateOperatingParameters();
 		} else {
 			console.log("Failed to set new xB");
 		}
 	}
 
-	set R(_R) {this._R = R}
+	set R(_R) {
+		this._R = R;
+		this.calculateOperatingParameters();
+	}
 
 	set murphree(newMurphree) {
 		if (0 < murphree && murphree <= 1) {
@@ -115,17 +142,13 @@ class DistillationTower {
 	get R()  {return this._R}
 	get murphree() {return this._murphree}
 
-	calculateOPParameters() {
-		let m = {};
-		let b = {};
-		m['rectifying'] = this._R / (this._R + 1);
-		b['rectifying'] = this._xD / (this._R + 1);
+	calculateOperatingParameters() {
+		this.m['rectifying'] = this._R / (this._R + 1);
+		this.b['rectifying'] = this._xD / (this._R + 1);
 
-		let transitionY = m['rectifying'] * self._xF + b['rectifying'];
-		m['stripping'] = (transitionY - this._xB) / (this._xF - this._xB);
-		b['stripping'] = this._xB * (1 - m['stripping']);
-
-		return [m, b]
+		let transitionY = this.m['rectifying'] * this._xF + this.b['rectifying'];
+		this.m['stripping'] = (transitionY - this._xB) / (this._xF - this._xB);
+		this.b['stripping'] = this._xB * (1 - this.m['stripping']);
 	}
 
 }
@@ -157,7 +180,7 @@ class VaporLiquidEquilibria {
 		   	boiling points */
 		let lowerBP = this._lightChemical.boilingPoint;
 		let upperBP = this._heavyChemical.boilingPoint;
-		let temperatureRange = linspace(lowerBP, upperBP, 121);
+		let temperatureRange = linspace(lowerBP, upperBP, 101);
 		let lightLiquidFraction = [];
 		let lightVaporFraction = [];
 
@@ -281,7 +304,7 @@ class Plotter {
 		this.context = document.getElementById('myChart').getContext('2d');
 	}
 
-	baseConfiguration(numOfDatasets=1) {
+	baseConfiguration() {
 		let config = {
 			type: 'scatter',
 
@@ -313,53 +336,81 @@ class Plotter {
 				}
 			}		
 		};
-
-		for (let i = 0; i < numOfDatasets; i++){
-			config['data']['datasets'].push(this.templateDataSet());
-		}
-
 		return config;
 	}
 
-	templateDataSet() {
+	templateDataSet(color='red') {
 		return {
-			borderColor: 'red',
+			borderColor: color,
 			backgroundColor: 'transparent',
 			showLine: true,
 			borderWidth: 1
 		}
 	}
 
-	plotTxy(objVLE) {
-		let config = this.baseConfiguration(2);
-		let Txy_data = objVLE.getPointsTxy();
-		let Tx = Txy_data[0];
-		let Ty = Txy_data[1];
+	addPlotElement(config, name, data, color='red', dashed=false) {
+		let element = this.templateDataSet(color);
+		element['label'] = name;
+		element['data'] = data;
+		if (dashed) {
+			element['borderDash'] = [10, 5];
+		}
 
-		config['data']['datasets'][0]['label'] = 'Liquid';
-		config['data']['datasets'][0]['data'] = Tx;
-		config['data']['datasets'][0]['borderColor'] = 'blue'
+		config['data']['datasets'].push(element);
+	}
 
-		config['data']['datasets'][1]['label'] = 'Vapor';
-		config['data']['datasets'][1]['data'] = Ty;
+	addTxyPlot(config, objVLE) {
+		let TxyData = objVLE.getPointsTxy();
+		let Tx = TxyData[0];
+		let Ty = TxyData[1];
+
+		this.addPlotElement(config, 'Liquid', Tx, 'blue');
+		this.addPlotElement(config, 'Vapor', Ty);
 
 		config['options']['scales']['xAxes'][0]['ticks']['min'] = Tx[0]['x'];
 		config['options']['scales']['xAxes'][0]['ticks']['max'] = Tx[Tx.length - 1]['x'];
+	}
+
+	addVLEPlot(config, objVLE) {
+		this.addPlotElement(config, 'VLE', objVLE.getPointsVLE(), 'blue');
+	}
+
+	addDiagonalPlot(config) {
+		let diagonalPoints = [{x: 0, y: 0},		{x: 1, y: 1}];
+		this.addPlotElement(config, 'Diagonal', diagonalPoints, 'black', true);
+	}
+
+	plotTxy(objVLE) {
+		let config = this.baseConfiguration();
+		this.addTxyPlot(config, objVLE);
 
 		let myChart = new Chart(this.context, config);
 	}
 
 	plotVLE(objVLE) {
+		let config = this.baseConfiguration(0);
+
+		this.addVLEPlot(config, objVLE);
+		this.addDiagonalPlot(config);
+
+		let myChart = new Chart(this.context, config);
+	}
+
+	plotDistillation(objDistill) {
 		let config = this.baseConfiguration();
 
 		config['data']['datasets'][0]['label'] = 'VLE';
 		config['data']['datasets'][0]['data'] = objVLE.getPointsVLE();
 
-		let myChart = new Chart(this.context, config);
+		this.addVLEPlot(config, objDistill.BinarySystem.VLE);
+		this.addDiagonalPlot(config);
+
 	}
 
 }
 
+
+// TESTING SECTION //
 const chemicals = {};
 chemicals['water'] = new Chemical('water',18.3036,3816.44,-46.13);
 chemicals['n-butane'] = new Chemical('n-butane',15.6782,2154.90,-34.42);
@@ -372,4 +423,6 @@ system.heavyChemical = chemicals['n-pentane'];
 
 
 let plt = new Plotter();
-plt.plotTxy(system.VLE);
+
+plt.plotVLE(system.VLE);
+setTimeout(function() {plt.plotTxy(system.VLE)}, 2000)
