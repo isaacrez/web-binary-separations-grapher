@@ -1,6 +1,5 @@
 
 console.log('Program started...')
-//require('chart.js')
 
 class Distillation {
 	/* Handles distillation calculations, including McCabe Thiele steps */
@@ -8,29 +7,134 @@ class Distillation {
 	constructor (binarySystem, towerSpecs) {
 		this._binarySystem = binarySystem;
 		this._towerSpecs = towerSpecs;
-		this._stepPoints = this.generateSteps();
+
+		this.stepPts = [];
+		this.totalStages = 0;
+		this.feedStage = 0;
+		this.generateSteps();
 	}
 
-	generateSteps() {
-		VLE = this._BinarySystem.VLE;
-		let xEqPts = VLE.lightLiquidFraction;
-		let yEqPts = VLE.lightVaporFraction; 
+	// @TODO: See if a listener can be used for these variables instead
+	set lightChemical(chemical) {
+		this._binarySystem.lightChemical = chemical;
+		this.generateSteps();
+	}
+	set heavyChemical(chemical) {
+		this._binarySystem.heavyChemical = chemical;
+		this.generateSteps();
+	}
 
+	set R(R) {
+		this._towerSpecs.R = R;
+		this.generateSteps();
+	}
+	set xB(xB) {
+		this._towerSpecs.xB = xB;
+		if (this._towerSpecs.xB == xB) {
+			this.generateSteps();
+		}
+	}
+	set xF(xF) {
+		this._towerSpecs.xF = xF;
+		if (this._towerSpecs.xF == xF) {
+			this.generateSteps();
+		}
+	}
+	set xD(xD) {
+		this._towerSpecs.xD = xD;
+		if (this._towerSpecs.xD == xD) {
+			this.generateSteps();
+		}
+	}
+	set murphree(murphree) {
+		this._towerSpecs.murphree = murphree;
+		if (this._towerSpecs.murphree == murphree) {
+			this.generateSteps();
+		}
+	}
+	/* Messy shitshow above */
+
+	get binarySystem() {return this._binarySystem}
+	get towerSpecs() {return this._towerSpecs}
+
+	generateSteps() {
+		let VLE = this._binarySystem.VLE;
+		let xEqPts = VLE.xMoleFraction;
+		let yEqPts = VLE.yMoleFraction; 
+
+		this.feedStage = 0;
+		this.totalStages = 0;
+
+		if (this._towerSpecs.murphree == 1) {
+			this.performIdealSteps(xEqPts, yEqPts)
+		} else {
+			this.performRealSteps(xEqPts, yEqPts)
+		}
+	}
+
+	performIdealSteps(xEqPts, yEqPts) {
+		let [xStep, yStep] = this.getStartingSteps();
+
+		while (this._towerSpecs.xB < xStep && this.totalStages < 100) {
+			xStep = linearlyInterpolate(yStep, yEqPts, xEqPts);
+			this.stepPts.push({x: xStep, y: yStep});
+			yStep = this._towerSpecs.getOperatingY(xStep);
+			this.stepPts.push({x: xStep, y: yStep})
+
+			this.totalStages++;
+			this.checkForFeedStage(xStep);
+		}
+	}
+
+	performRealSteps(xEqPts, yEqPts) {
+		let [xStep, yStep] = this.getStartingSteps();
+
+		while (this._towerSpecs.xB < xStep && this.totalStages < 100) {
+			xStep = linearlyInterpolate(yStep, yEqPts, xEqPts);
+			if (this._towerSpecs.xB < xStep) {
+				xStep = linearlyInterploate(yStep, this.yEffPts, xEqPts)
+			}
+			this.stepPts.push({x: xStep, y: yStep});
+			yStep = this._towerSpecs.getOperatingY(xStep);
+			this.stepPts.push({x: xStep, y: yStep})
+
+			this.totalStages++;
+			this.checkForFeedStage(xStep);
+		}
+	}
+
+	getStartingSteps() {
 		let xStep = this._towerSpecs.xD;
 		let yStep = this._towerSpecs.xD;
+		this.stepPts = [{x: xStep, y: yStep}]
 
-		let stepPts = [{x: xStep, y: yStep}]
-		let c = 0;
+		return [xStep, yStep]
+	}
 
-		while (this._towerSpecs.xB < xStep && c < 100) {
-			xStep = linearlyInterpolate(yStep, yEqPts, xEqPts)
-			stepPts.append({x: xStep, y: yStep})
-			yStep = this._towerSpecs.getOperatingY(xStep);
-			stepPts.append({x: xStep, y: yStep})
+	checkForFeedStage(xStep) {
+		if (this.feedStage != 0) {
+			if (xStep < this._towerSpecs.xF) {
+				this.feedStage = this.totalStages;
+			}
+		}
+	}
 
-			c++;
+	getEffectiveEq() {
+		this.yEffPts = [];
+
+		if (this._towerSpecs.murphree == 1) {
+			return;
 		}
 
+		let xFrac = this._binarySystem.VLE.xMoleFraction;
+		let yFrac = this._binarySystem.VLE.yMoleFraction;
+		let murphree = this._towerSpecs.murphree;
+
+		for (let i = 0; i < yFrac; i++) {
+			let yOP = this._towerSpecs.getOperatingY(xFrac[i])
+			let yEff = murphree * (yFrac[i] - yOP) + yOP;
+			this.yEffPts.push(yEff);
+		}
 	}
 
 	getEffectiveY(yEquilibrium, yOP) {
@@ -143,6 +247,15 @@ class DistillationTower {
 		this.b['stripping'] = this._xB * (1 - this.m['stripping']);
 	}
 
+	getOperatingPoints() {
+		let xB = this._xB;
+		let xF = this._xF;
+		let xD = this._xD
+		return [{x: xB, y: xB},
+				{x: xF, y: this.getOperatingY(xF)},
+				{x: xD, y: xD}];
+	}
+
 	getOperatingY(x) {
 		if (this.xF < x) {
 			var m = this.m['rectifying'];
@@ -178,8 +291,8 @@ class VaporLiquidEquilibria {
 	};
 
 	get temperatureRange () {return this._temperatureRange};
-	get lightLiquidFractions () {return this._xFractions};
-	get lightvaporFractions () {return this._yFractions};
+	get xMoleFraction () {return this._xFractions};
+	get yMoleFraction () {return this._yFractions};
 
 	_calculateVaporLiquidEquilibria () {
 		/* 	Generates the x and y values for various temperatures between the chemical's
@@ -187,21 +300,21 @@ class VaporLiquidEquilibria {
 		let lowerBP = this._lightChemical.boilingPoint;
 		let upperBP = this._heavyChemical.boilingPoint;
 		let temperatureRange = linspace(lowerBP, upperBP, 101);
-		let lightLiquidFraction = [];
-		let lightVaporFraction = [];
+		let xMoleFraction = [];
+		let yMoleFraction = [];
 
 		for (let i = 0; i < temperatureRange.length; i++){
 			let currTemp = temperatureRange[i];
 			let currLiquidFrac = this._calculateX(currTemp);
 			let currVaporFrac = this._calculateY(currTemp, currLiquidFrac);
 
-			lightLiquidFraction.push(currLiquidFrac);
-			lightVaporFraction.push(currVaporFrac);
+			xMoleFraction.push(currLiquidFrac);
+			yMoleFraction.push(currVaporFrac);
 		}
 
 		this._temperatureRange = temperatureRange;
-		this._xFractions = lightLiquidFraction;
-		this._yFractions = lightVaporFraction;
+		this._xFractions = xMoleFraction;
+		this._yFractions = yMoleFraction;
 
 	}
 
@@ -315,17 +428,12 @@ class Plotter {
 		this.config = {
 			type: 'scatter',
 
-			data: {
-				datasets: []
-			},
+			data: {datasets: []},
 
 			options: {
-				elements: {
-					point: {
-						radius: 0,
-					}
-				},
+				elements: {point: {radius: 0}},
 				scales: {
+					xAxes: [{}],
 					yAxes: [{
 						ticks: {
 							min: 0,
@@ -365,11 +473,11 @@ class Plotter {
 	}
 
 	adjustScale(newMin, newMax) {
-		this.config['options']['scales']['xAxes'] = [{
+		this.config['options']['scales']['xAxes'][0]['ticks'] = {
 			min: newMin,
 			max: newMax,
 			maxTicksLimit: 11
-		}]
+		}
 	}
 
 	addTxyPlot(objVLE) {
@@ -387,12 +495,17 @@ class Plotter {
 		this.adjustScale(0, 1);
 	}
 
+	addDistillationElements(objDistill) {
+		this.addPlotElement('Stages', objDistill.stepPts, 'green', true)
+		this.addPlotElement('OP line', objDistill.towerSpecs.getOperatingPoints(), 'grey')
+	}
+
 	// TODO Add OperatingLinePlot
 	// TODO Add McCabeTheilePlot
 
 	addDiagonalPlot() {
 		let diagonalPoints = [{x: 0, y: 0},		{x: 1, y: 1}];
-		this.addPlotElement('Diagonal', diagonalPoints, 'black', true);
+		this.addPlotElement('Diagonal', diagonalPoints, 'white', true);
 	}
 
 	plotTxy(objVLE) {
@@ -400,8 +513,7 @@ class Plotter {
 
 		this.addTxyPlot(objVLE);
 
-		this.resetChart()
-		this.chart.update();
+		this.resetChart();
 	}
 
 	plotVLE(objVLE) {
@@ -411,17 +523,16 @@ class Plotter {
 		this.addDiagonalPlot();
 
 		this.resetChart();
-		this.chart.update();
 	}
 
 	plotDistillation(objDistill) {
 		this.resetConfiguration();
 
-		this.addVLEPlot(objDistill.BinarySystem.VLE);
+		this.addVLEPlot(objDistill.binarySystem.VLE);
+		this.addDistillationElements(objDistill)
 		this.addDiagonalPlot();
 
 		this.resetChart();
-		this.chart.update();
 	}
 
 }
@@ -438,9 +549,13 @@ tower = new DistillationTower();
 system = new BinarySystem(chemicals['water'], chemicals['n-butane'], tower);
 system.heavyChemical = chemicals['n-pentane'];
 
+distillation = new Distillation(system, tower)
+
 
 let plt = new Plotter('myChart');
 
-plt.plotVLE(system.VLE);
-setTimeout(function() {plt.plotVLE(system.VLE)}, 2000)
-setTimeout(function() {plt.plotTxy(system.VLE)}, 5000)
+// plt.plotVLE(system.VLE);
+// setTimeout(function() {plt.plotTxy(system.VLE)}, 2500)
+// setTimeout(function() {plt.plotDistillation(distillation), 5000})
+
+plt.plotDistillation(distillation)
