@@ -13,11 +13,20 @@ class Distillation {
 
 	generateSteps() {
 		VLE = this._BinarySystem.VLE;
+		let xEqPts = VLE.lightLiquidFraction;
+		let yEqPts = VLE.lightVaporFraction; 
+
 		let xStep = this._towerSpecs.xD;
 		let yStep = this._towerSpecs.xD;
+
+		let stepPts = [{x: xStep, y: yStep}]
 		let c = 0;
 
 		while (this._towerSpecs.xB < xStep && c < 100) {
+			xStep = linearlyInterpolate(yStep, yEqPts, xEqPts)
+			stepPts.append({x: xStep, y: yStep})
+			yStep = this._towerSpecs.getOperatingY(xStep);
+			stepPts.append({x: xStep, y: yStep})
 
 			c++;
 		}
@@ -26,23 +35,6 @@ class Distillation {
 
 	getEffectiveY(yEquilibrium, yOP) {
 		return this._towerSpecs.murphree * (yEquilibrium - yOP) + yOP;
-	}
-
-	getOperatingY(x) {
-		let xF = this._towerSpecs.xF;
-		let xB = this._towerSpecs.xB;
-
-		if (xF < x) {
-			var m = this._towerSpecs.m['rectifying'];
-			var b = this._towerSpecs.b['rectifying'];
-		} else if (xB < x) {
-			var m = this._towerSpecs.m['stripping'];
-			var b = this._towerSpecs.b['stripping']
-		} else {
-			return x;
-		}
-
-		return m*x + b;
 	}
 
 
@@ -149,6 +141,20 @@ class DistillationTower {
 		let transitionY = this.m['rectifying'] * this._xF + this.b['rectifying'];
 		this.m['stripping'] = (transitionY - this._xB) / (this._xF - this._xB);
 		this.b['stripping'] = this._xB * (1 - this.m['stripping']);
+	}
+
+	getOperatingY(x) {
+		if (this.xF < x) {
+			var m = this.m['rectifying'];
+			var b = this.b['rectifying'];
+		} else if (this.xB < x) {
+			var m = this.m['stripping'];
+			var b = this.b['stripping']
+		} else {
+			return x;
+		}
+
+		return m*x + b;
 	}
 
 }
@@ -300,12 +306,13 @@ function linearlyInterpolate(x, xArray, yArray, index=0) {
 
 class Plotter {
 
-	constructor() {
-		this.context = document.getElementById('myChart').getContext('2d');
+	constructor(chartID) {
+		this.context = document.getElementById(chartID).getContext('2d');
+		this.chart = new Chart(this.context, {})
 	}
 
-	baseConfiguration() {
-		let config = {
+	resetConfiguration() {
+		this.config = {
 			type: 'scatter',
 
 			data: {
@@ -319,13 +326,6 @@ class Plotter {
 					}
 				},
 				scales: {
-					xAxes: [{
-						ticks: {
-							min: 0,
-							max: 1,
-							maxTicksLimit: 11
-						}
-					}],
 					yAxes: [{
 						ticks: {
 							min: 0,
@@ -336,7 +336,11 @@ class Plotter {
 				}
 			}		
 		};
-		return config;
+	}
+
+	resetChart() {
+		this.chart.destroy()
+		this.chart = new Chart(this.context, this.config)
 	}
 
 	templateDataSet(color='red') {
@@ -348,63 +352,76 @@ class Plotter {
 		}
 	}
 
-	addPlotElement(config, name, data, color='red', dashed=false) {
+	addPlotElement(name, data, color='red', dashed=false) {
 		let element = this.templateDataSet(color);
+
 		element['label'] = name;
 		element['data'] = data;
 		if (dashed) {
 			element['borderDash'] = [10, 5];
 		}
 
-		config['data']['datasets'].push(element);
+		this.config['data']['datasets'].push(element);
 	}
 
-	addTxyPlot(config, objVLE) {
+	adjustScale(newMin, newMax) {
+		this.config['options']['scales']['xAxes'] = [{
+			min: newMin,
+			max: newMax,
+			maxTicksLimit: 11
+		}]
+	}
+
+	addTxyPlot(objVLE) {
 		let TxyData = objVLE.getPointsTxy();
 		let Tx = TxyData[0];
 		let Ty = TxyData[1];
 
-		this.addPlotElement(config, 'Liquid', Tx, 'blue');
-		this.addPlotElement(config, 'Vapor', Ty);
-
-		config['options']['scales']['xAxes'][0]['ticks']['min'] = Tx[0]['x'];
-		config['options']['scales']['xAxes'][0]['ticks']['max'] = Tx[Tx.length - 1]['x'];
+		this.addPlotElement('Liquid', Tx, 'blue');
+		this.addPlotElement('Vapor', Ty);
+		this.adjustScale(Tx[0]['x'], Tx[Tx.length-1]['x']);
 	}
 
-	addVLEPlot(config, objVLE) {
-		this.addPlotElement(config, 'VLE', objVLE.getPointsVLE(), 'blue');
+	addVLEPlot(objVLE) {
+		this.addPlotElement('VLE', objVLE.getPointsVLE(), 'blue');
+		this.adjustScale(0, 1);
 	}
 
-	addDiagonalPlot(config) {
+	// TODO Add OperatingLinePlot
+	// TODO Add McCabeTheilePlot
+
+	addDiagonalPlot() {
 		let diagonalPoints = [{x: 0, y: 0},		{x: 1, y: 1}];
-		this.addPlotElement(config, 'Diagonal', diagonalPoints, 'black', true);
+		this.addPlotElement('Diagonal', diagonalPoints, 'black', true);
 	}
 
 	plotTxy(objVLE) {
-		let config = this.baseConfiguration();
-		this.addTxyPlot(config, objVLE);
+		this.resetConfiguration();
 
-		let myChart = new Chart(this.context, config);
+		this.addTxyPlot(objVLE);
+
+		this.resetChart()
+		this.chart.update();
 	}
 
 	plotVLE(objVLE) {
-		let config = this.baseConfiguration(0);
+		this.resetConfiguration();
 
-		this.addVLEPlot(config, objVLE);
-		this.addDiagonalPlot(config);
+		this.addVLEPlot(objVLE);
+		this.addDiagonalPlot();
 
-		let myChart = new Chart(this.context, config);
+		this.resetChart();
+		this.chart.update();
 	}
 
 	plotDistillation(objDistill) {
-		let config = this.baseConfiguration();
+		this.resetConfiguration();
 
-		config['data']['datasets'][0]['label'] = 'VLE';
-		config['data']['datasets'][0]['data'] = objVLE.getPointsVLE();
+		this.addVLEPlot(objDistill.BinarySystem.VLE);
+		this.addDiagonalPlot();
 
-		this.addVLEPlot(config, objDistill.BinarySystem.VLE);
-		this.addDiagonalPlot(config);
-
+		this.resetChart();
+		this.chart.update();
 	}
 
 }
@@ -422,7 +439,8 @@ system = new BinarySystem(chemicals['water'], chemicals['n-butane'], tower);
 system.heavyChemical = chemicals['n-pentane'];
 
 
-let plt = new Plotter();
+let plt = new Plotter('myChart');
 
 plt.plotVLE(system.VLE);
-setTimeout(function() {plt.plotTxy(system.VLE)}, 2000)
+setTimeout(function() {plt.plotVLE(system.VLE)}, 2000)
+setTimeout(function() {plt.plotTxy(system.VLE)}, 5000)
