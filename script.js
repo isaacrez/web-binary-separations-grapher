@@ -15,12 +15,12 @@ class Distillation {
 	}
 
 	// @TODO: See if a listener can be used for these variables instead
-	set lightChemical(chemical) {
-		this._binarySystem.lightChemical = chemical;
+	set chemical_1(chemical) {
+		this._binarySystem.chemical_1 = chemical;
 		this.generateSteps();
 	}
-	set heavyChemical(chemical) {
-		this._binarySystem.heavyChemical = chemical;
+	set chemical_2(chemical) {
+		this._binarySystem.chemical = chemical;
 		this.generateSteps();
 	}
 
@@ -65,6 +65,8 @@ class Distillation {
 		this.feedStage = 0;
 		this.totalStages = 0;
 
+		this.getEffectiveEq();
+
 		if (this._towerSpecs.murphree == 1) {
 			this.performIdealSteps(xEqPts, yEqPts)
 		} else {
@@ -92,7 +94,7 @@ class Distillation {
 		while (this._towerSpecs.xB < xStep && this.totalStages < 100) {
 			xStep = linearlyInterpolate(yStep, yEqPts, xEqPts);
 			if (this._towerSpecs.xB < xStep) {
-				xStep = linearlyInterploate(yStep, this.yEffPts, xEqPts)
+				xStep = linearlyInterpolate(yStep, this.yEffPts, xEqPts)
 			}
 			this.stepPts.push({x: xStep, y: yStep});
 			yStep = this._towerSpecs.getOperatingY(xStep);
@@ -126,15 +128,30 @@ class Distillation {
 			return;
 		}
 
-		let xFrac = this._binarySystem.VLE.xMoleFraction;
-		let yFrac = this._binarySystem.VLE.yMoleFraction;
+		let VLE = this._binarySystem.VLE;
+		let xFrac = VLE.xMoleFraction;
+		let yFrac = VLE.yMoleFraction;
 		let murphree = this._towerSpecs.murphree;
 
-		for (let i = 0; i < yFrac; i++) {
+		for (let i = 0; i < yFrac.length; i++) {
 			let yOP = this._towerSpecs.getOperatingY(xFrac[i])
 			let yEff = murphree * (yFrac[i] - yOP) + yOP;
 			this.yEffPts.push(yEff);
 		}
+	}
+
+	plottableEffectiveEq() {
+		let VLE = this._binarySystem.VLE;
+		let xFrac = VLE.xMoleFraction;
+		let yFrac = this.yEffPts;
+		let points = []
+
+		for (let i = 0; i < yFrac.length; i++) {
+			points.push({
+				x: xFrac[i], y: yFrac[i]
+			})
+		}
+		return points;
 	}
 
 	getEffectiveY(yEquilibrium, yOP) {
@@ -149,31 +166,42 @@ class BinarySystem {
 	constructor (chemical_1, chemical_2) {
 		/* 	Creates a system of two chemicals, organized based on boiling points,
 			then generates the vapor liquid equilibrium information */
-		this._lightChemical = chemical_1;
-		this._heavyChemical = chemical_2;
-		this._ensureCorrectChemicalLabels();
+		this._chemical_1 = chemical_1;
+		this._chemical_2 = chemical_2;
+		this._lightChemical;
+		this._heavyChemical;
+
+		this._setChemicalLabels();
 		this.VLE = new VaporLiquidEquilibria(this._lightChemical, this._heavyChemical);
-
 	}
 
-	set lightChemical (chemical) {
-		this._lightChemical = chemical;
-		this._ensureCorrectChemicalLabels();
-		this.VLE.lightChemical = this._lightChemical;
+	get lightChemical () {return this._lightChemical};
+	get heavyChemical () {return this._heavyChemical};
+
+	set chemical_1 (chemical) {
+		this._chemical_1 = chemical;
+		this._setChemicalLabels();
+		this._updateVLE();
 	}
 
-	set heavyChemical (chemical) {
-		this._heavyChemical = chemical;
-		this._ensureCorrectChemicalLabels();
-		this.VLE.heavyChemical = this._heavyChemical;
+	set chemical_2 (chemical) {
+		this._chemical_2 = chemical;
+		this._setChemicalLabels();
+		this._updateVLE();
 	}
 
-	_ensureCorrectChemicalLabels () {
-		if (this._heavyChemical.boilingPoint < this._lightChemical.boilingPoint) {
-			let tempChemical = this._heavyChemical;
-			this._heavyChemical = this._lightChemical;
-			this._lightChemical = tempChemical;
+	_setChemicalLabels () {
+		if (this._chemical_1.boilingPoint < this._chemical_2.boilingPoint) {
+			this._lightChemical = this._chemical_1;
+			this._heavyChemical = this._chemical_2;
+		} else {
+			this._lightChemical = this._chemical_2;
+			this._heavyChemical = this._chemical_1;
 		}
+	}
+
+	_updateVLE () {
+		this.VLE.setNewChemicals(this._lightChemical, this._heavyChemical)
 	}
 
 }
@@ -224,7 +252,7 @@ class DistillationTower {
 		this.calculateOperatingParameters();
 	}
 
-	set murphree(newMurphree) {
+	set murphree(murphree) {
 		if (0 < murphree && murphree <= 1) {
 			this._murphree = murphree;
 		} else {
@@ -285,10 +313,18 @@ class VaporLiquidEquilibria {
 		this._lightChemical = lightChemical;
 		this._calculateVaporLiquidEquilibria();
 	};
+	
 	set heavyChemical(heavyChemical) {
 		this._heavyChemical = heavyChemical
 		this._calculateVaporLiquidEquilibria();
 	};
+
+	setNewChemicals(lightChemical, heavyChemical) {
+		this._lightChemical = lightChemical;
+		this._heavyChemical = heavyChemical;
+		this._calculateVaporLiquidEquilibria();
+	};
+
 
 	get temperatureRange () {return this._temperatureRange};
 	get xMoleFraction () {return this._xFractions};
@@ -431,6 +467,9 @@ class Plotter {
 			data: {datasets: []},
 
 			options: {
+				legend: {
+					display: false
+				},
 				elements: {point: {radius: 0}},
 				scales: {
 					xAxes: [{}],
@@ -456,6 +495,7 @@ class Plotter {
 			borderColor: color,
 			backgroundColor: 'transparent',
 			showLine: true,
+			lineTension: 0,
 			borderWidth: 1
 		}
 	}
@@ -496,8 +536,9 @@ class Plotter {
 	}
 
 	addDistillationElements(objDistill) {
-		this.addPlotElement('Stages', objDistill.stepPts, 'green', true)
-		this.addPlotElement('OP line', objDistill.towerSpecs.getOperatingPoints(), 'grey')
+		this.addPlotElement('Stages', objDistill.stepPts, 'green', true);
+		this.addPlotElement('Effective Eq.', objDistill.plottableEffectiveEq(), 'blue', true);
+		this.addPlotElement('OP line', objDistill.towerSpecs.getOperatingPoints(), 'grey');
 	}
 
 	// TODO Add OperatingLinePlot
@@ -533,29 +574,40 @@ class Plotter {
 		this.addDiagonalPlot();
 
 		this.resetChart();
+		console.log(this.chart.config)
 	}
 
 }
 
+class inputHandler {
+	constructor(chartID) {
+		this.chemicals = {};
+		this._loadChemicals();
+		this.tower = new DistillationTower();
+		this.system = new BinarySystem();
+		this.distillation = new Distillation(system, tower)
+		this.plt = new Plotter(chartID)
+		this.pltType = 'distillation'
 
-// TESTING SECTION //
-const chemicals = {};
-chemicals['water'] = new Chemical('water',18.3036,3816.44,-46.13);
-chemicals['n-butane'] = new Chemical('n-butane',15.6782,2154.90,-34.42);
-chemicals['n-pentane'] = new Chemical('n-pentane',15.8333,2477.07,-39.94);
+		plt.plotDistillation(distillation)
+	}
 
+	_loadChemicals() {
+		this.chemicals['water'] = new Chemical('water',18.3036,3816.44,-46.13);
+		this.chemicals['n-butane'] = new Chemical('n-butane',15.6782,2154.90,-34.42);
+		this.chemicals['n-pentane'] = new Chemical('n-pentane',15.8333,2477.07,-39.94);
+	}
 
-tower = new DistillationTower();
-system = new BinarySystem(chemicals['water'], chemicals['n-butane'], tower);
-system.heavyChemical = chemicals['n-pentane'];
+	updatePlot(ID) {
+		newChemical = document.getElementById('ID').value;
 
-distillation = new Distillation(system, tower)
+		if (this.pltType == 'distillation') {
 
+		} else if (this.pltType == 'VLE') {
 
-let plt = new Plotter('myChart');
+		} else if (this.pltType == 'Txy') {
 
-// plt.plotVLE(system.VLE);
-// setTimeout(function() {plt.plotTxy(system.VLE)}, 2500)
-// setTimeout(function() {plt.plotDistillation(distillation), 5000})
+		}
+	}
 
-plt.plotDistillation(distillation)
+}
