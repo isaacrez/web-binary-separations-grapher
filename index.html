@@ -22,25 +22,36 @@
 			<h5><i>(Light v. Heavy)</i></h5>
 		</div>
 
-		<div id="chartStorage">
-			<canvas id="myChart"></canvas>
+		<div id="overlapContainer">
+			<div id="left">
+				<canvas id="myChart"></canvas>
+			</div>
+			<div id="right">
+				<img src="./Elroy.png" />
+			</div>
+		</div>
+
+		<div id="majorSpacer">
 		</div>
 
 		<div class="towerSpecs">
 			<p>R:</p>
-			<input type="number" min=0 max=50 step=0.01>
+			<input id="R" type="number" min=0 max=50 step=0.01>
 			
 			<p>xB:</p>
-			<input type="number" min=0 max=1 step=0.01>
+			<input id="xB" type="number" min=0 max=1 step=0.01>
 			
 			<p>xF:</p>
-			<input type="number" min=0 max=1 step=0.01>
+			<input id="xF" type="number" min=0 max=1 step=0.01>
 			
 			<p>xD:</p>
-			<input type="number" min=0 max=1 step=0.01>
+			<input id="xD" type="number" min=0 max=1 step=0.01>
 			
 			<p>&eta;:</p>
-			<input type="number" min=0 max=1 step=0.01>
+			<input id="murphree" type="number" min=0 max=1 step=0.01>
+		</div>
+
+		<div class="spacing">
 		</div>
 
 		<div class="side-by-side">
@@ -69,9 +80,7 @@
 				<option value="1-lacticacid">Lactic Acid</option>
 				<option value="l-lactide">L-Lactide</option>
 			</select>
-		</div>
 
-		<div class="side-by-side">
 			<p class="single left">Chemical #2:</p>
 			<select id="chemical_2">
 				<option value="water">Water</option>
@@ -97,13 +106,17 @@
 				<option value="1-lacticacid">Lactic Acid</option>
 				<option value="l-lactide">L-Lactide</option>
 			</select>
-		</div>
 
-		<div class="side-by-side">
+			<p class="single left">Graph Type</p>
+			<select id="graphType">
+				<option value="distillation">Distillation</option>
+				<option value="VLE">VLE</option>
+				<option value="Txy">Txy</option>
+			</select>
+
 			<p class="single left">Optimal Feed Stage:</p>
 			<p id="feedStage" class="single"></p>
-		</div>
-		<div class="side-by-side">
+
 			<p class="single left">Optimal Stage Number:</p>
 			<p id="totalStages" class="single"></p>
 		</div>

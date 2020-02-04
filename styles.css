@@ -3,10 +3,12 @@ body {
 	text-align: center;
 	font-family: Cambria, serif;
 	line-height: 0;
+	background-color: lightblue;
 }
 
 p {
 	line-height: 20px;
+	margin: 0;
 }
 
 p.tighten {
@@ -16,7 +18,7 @@ p.tighten {
 }
 
 p.single {
-	line-height: 0.2;
+	line-height: 2;
 }
 
 p.left {
@@ -32,9 +34,15 @@ div {
 	border-color: black;
 }
 
+div.spacing {
+	height: 10px;
+}
+
 div.side-by-side {
 	display: grid;
 	grid-template-columns: 50% 50%;
+	grid-row-gap: 5px;
+
 	margin-left: 20%;
 	margin-right: 20%;
 	font-size: 14px;
@@ -42,24 +50,53 @@ div.side-by-side {
 
 div.towerSpecs {
 	display: grid;
+	align-items: center;
+
 	grid-template-columns: 10% 40% 10% 40%;
-	grid-gap: 2px;
+	grid-column-gap: 10px;
+	grid-row-gap: 5px;
+
 	margin-left: 20%;
-	margin-right: 20%;
+	margin-right: 25%;
 
 	text-align: left;
 	line-height: 0;
 	font-size: 14px;
 }
 
+img {
+	height: 275px;
+	opacity: 0.25;
+
+}
+
 #mainContent {
 	display: grid;
 	width: 600px;
 	margin: auto;
-	background-color: lightblue;
+	background-color: white;
 }
 
-#chartStorage {
-	border-width: 1px;
-	border-color: black;
+#overlapContainer {
+	width: 600px;
+	position: relative;
+}
+
+#left {
+	width: 600px;
+	position: absolute;
+	left: 0;
+	top: 0;
+	z-index: 2;
+}
+
+#right {
+	width: 600px;
+	position: absolute;
+	left: 0;
+	top: 0;
+}
+
+#majorSpacer {
+	height: 300px;
 }
