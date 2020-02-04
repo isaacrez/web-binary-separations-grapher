@@ -14,13 +14,12 @@ class Distillation {
 		this.generateSteps();
 	}
 
-	// @TODO: See if a listener can be used for these variables instead
 	set chemical_1(chemical) {
 		this._binarySystem.chemical_1 = chemical;
 		this.generateSteps();
 	}
 	set chemical_2(chemical) {
-		this._binarySystem.chemical = chemical;
+		this._binarySystem.chemical_2 = chemical;
 		this.generateSteps();
 	}
 
@@ -52,10 +51,17 @@ class Distillation {
 			this.generateSteps();
 		}
 	}
-	/* Messy shitshow above */
 
-	get binarySystem() {return this._binarySystem}
-	get towerSpecs() {return this._towerSpecs}
+	get binarySystem() {return this._binarySystem};
+	get towerSpecs() {return this._towerSpecs};
+
+	get chemical_1() {return this._binarySystem.chemical_1};
+	get chemical_2() {return this._binarySystem.chemical_2};
+	get R() {return this._towerSpecs.R};
+	get xB() {return this._towerSpecs.xB};
+	get xF() {return this._towerSpecs.xF};
+	get xD() {return this._towerSpecs.xD};
+	get murphree() {return this._towerSpecs.murphree};
 
 	generateSteps() {
 		let VLE = this._binarySystem.VLE;
@@ -114,7 +120,7 @@ class Distillation {
 	}
 
 	checkForFeedStage(xStep) {
-		if (this.feedStage != 0) {
+		if (this.feedStage == 0) {
 			if (xStep < this._towerSpecs.xF) {
 				this.feedStage = this.totalStages;
 			}
@@ -175,8 +181,12 @@ class BinarySystem {
 		this.VLE = new VaporLiquidEquilibria(this._lightChemical, this._heavyChemical);
 	}
 
+	// Used primarily for calculations
 	get lightChemical () {return this._lightChemical};
 	get heavyChemical () {return this._heavyChemical};
+	// Used primarily for UI interaction
+	get chemical_1 () {return this._chemical_1};
+	get chemical_2 () {return this._chemical_2};
 
 	set chemical_1 (chemical) {
 		this._chemical_1 = chemical;
@@ -420,7 +430,6 @@ function linspace(initValue, finalValue, elementCount) {
 	for (let i = 0; i < elementCount; i++){
 		array[i] = initValue + stepsize * i;
 	}
-
 	return array;
 }
 
@@ -574,7 +583,6 @@ class Plotter {
 		this.addDiagonalPlot();
 
 		this.resetChart();
-		console.log(this.chart.config)
 	}
 
 }
@@ -583,31 +591,165 @@ class inputHandler {
 	constructor(chartID) {
 		this.chemicals = {};
 		this._loadChemicals();
-		this.tower = new DistillationTower();
-		this.system = new BinarySystem();
-		this.distillation = new Distillation(system, tower)
-		this.plt = new Plotter(chartID)
-		this.pltType = 'distillation'
 
-		plt.plotDistillation(distillation)
+		let initialChemical1 = this.chemicals['n-pentane'];
+		let initialChemical2 = this.chemicals['n-butane'];
+
+		comboBoxes[0].value = initialChemical1.name;
+		comboBoxes[1].value = initialChemical2.name;
+
+		// Data Objects
+		this.tower = new DistillationTower();
+		this.system = new BinarySystem(initialChemical1, initialChemical2);
+		this.distillation = new Distillation(this.system, this.tower);
+		this.distillation.murphree = 0.67;
+
+		// Plotting
+		this.plt = new Plotter(chartID);
+		this.pltType = 'distillation';
+		this.updatePlot();
+		this.updateTitle();
 	}
 
 	_loadChemicals() {
-		this.chemicals['water'] = new Chemical('water',18.3036,3816.44,-46.13);
-		this.chemicals['n-butane'] = new Chemical('n-butane',15.6782,2154.90,-34.42);
-		this.chemicals['n-pentane'] = new Chemical('n-pentane',15.8333,2477.07,-39.94);
+		// Hardcoded in since this is all the chemicals that will be used in this project anyway
+		this.chemicals['water']				= new Chemical('water',18.3036,3816.44,-46.13);
+		this.chemicals['n-butane']			= new Chemical('n-butane',15.6782,2154.90,-34.42);
+		this.chemicals['n-pentane']			= new Chemical('n-pentane',15.8333,2477.07,-39.94);
+		this.chemicals['n-hexane']			= new Chemical('n-hexane',15.8366,2697.55,-48.78);
+		this.chemicals['n-heptane']			= new Chemical('n-heptane',15.8737,2911.32,-56.51);
+		this.chemicals['n-octane']			= new Chemical('n-octane',15.9426,3120.29,-63.63);
+		this.chemicals['n-nonane']			= new Chemical('n-nonane',15.9671,3291.45,-71.33);
+		this.chemicals['n-decane']			= new Chemical('n-decane',16.0114,3456.80,-78.67);
+		this.chemicals['n-hexadecane']		= new Chemical('n-hexadecane',16.1841,4214.91,-118.70);
+		this.chemicals['benzene']			= new Chemical('benzene',15.9008,2788.51,-52.36);
+		this.chemicals['toluene']			= new Chemical('toluene',16.0137,3096.52,-53.67);
+		this.chemicals['ethylbenzene']		= new Chemical('ethylbenzene',16.0195,3279.47,-59.95);
+		this.chemicals['1-propylbenzene']	= new Chemical('1-propylbenzene',16.0062,3433.84,-66.01);
+		this.chemicals['1-butylbenzene']	= new Chemical('1-butylbenzene',16.0793,3633.40,-71.77);
+		this.chemicals['methanol']			= new Chemical('methanol',18.5875,3626.55,-34.29);
+		this.chemicals['ethanol']			= new Chemical('ethanol',18.9119,3803.98,-41.68);
+		this.chemicals['1-propanol']		= new Chemical('1-propanol',17.5439,3166.38,-80.15);
+		this.chemicals['1-butanol']			= new Chemical('1-butanol',17.2160,3137.02,-94.43);
+		this.chemicals['1-pentanol']		= new Chemical('1-pentanol',16.5270,3026.89,-105.00);
+		this.chemicals['1-octanol']			= new Chemical('1-octanol',15.7428,3017.81,-137.10);
+		this.chemicals['1-lacticacid']		= new Chemical('1-lacticacid',16.0785,4276.57,-91.00);
+		this.chemicals['l-lactide']			= new Chemical('l-lactide',19.6150,7279.91,0.00);
 	}
 
-	updatePlot(ID) {
-		newChemical = document.getElementById('ID').value;
-
+	updatePlot() {
+		this.updateTitle();
+		this.updateStageDisplay();
 		if (this.pltType == 'distillation') {
-
+			this.plt.plotDistillation(this.distillation);
 		} else if (this.pltType == 'VLE') {
-
+			this.plt.plotVLE(this.system.VLE);
 		} else if (this.pltType == 'Txy') {
-
+			this.plt.plotTxy(this.system.VLE);
 		}
 	}
 
+	updateChemicalInput(ID) {
+		let comboBox = document.getElementById(ID);
+		let chemicalName = comboBox.value;
+		let newChemical = this.chemicals[chemicalName];
+
+		if (this.confirmNotPresent(chemicalName)) {
+			if (ID == 'chemical_1') {
+				this.distillation.chemical_1 = newChemical;
+			} else if (ID == 'chemical_2') {
+				this.distillation.chemical_2 = newChemical;
+			}
+			this.updatePlot();
+
+		} else {
+			if (ID == 'chemical_1') {
+				comboBox.value = this.distillation.chemical_1.name;
+			} else {
+				comboBox.value = this.distillation.chemical_2.name;
+			}
+		}
+	}
+
+	updateTowerInput(ID) {
+		let textBox = document.getElementById(ID);
+		let text = textBox.value;
+		let changed = false;
+		
+		// Update Distillation variable retrieval to get rid of this BS
+		if (ID == 'R') {
+			this.distillation.R = text;
+			if (this.distillation.R == text) {
+				changed = true;
+			}
+
+		} else if (ID == 'xB') {
+			this.distillation.xB = text;
+			if (this.distillation.xB == text) {
+				changed = true;
+			}
+
+		} else if (ID == 'xF') {
+			this.distillation.xF = text;
+			if (this.distillation.xF == text) {
+				changed = true;
+			}
+
+		} else if (ID == 'xD') {
+			this.distillation.xD = text;
+			if (this.distillation.xD == text) {
+				changed = true;
+			}
+
+		} else if (ID == 'murphree') {
+			this.distillation.murphree = text;
+			if (this.distillation.murphree == text) {
+				changed = true;
+			}
+		}
+
+		if (changed) {
+			this.updatePlot();
+		}
+	}
+
+	updateTitle() {
+		let title = document.getElementById('chartTitle');
+		let lightChemicalName = this.system.lightChemical.name;
+		let heavyChemicalName = this.system.heavyChemical.name;
+		title.textContent = lightChemicalName + " v. " + heavyChemicalName;
+	}
+
+	updateStageDisplay() {
+		let optimalStage = document.getElementById('totalStages');
+		let feedStage = document.getElementById('feedStage');
+
+		optimalStage.textContent = this.distillation.totalStages;
+		feedStage.textContent = this.distillation.feedStage;
+
+	}
+
+	confirmNotPresent(chemicalName) {
+		if (this.distillation.chemical_1.name == chemicalName) {
+			return false;
+		}
+		if (this.distillation.chemical_2.name == chemicalName) {
+			return false;
+		}
+		return true;
+	}
 }
+
+// Processing elements as variables
+let comboBoxID = ['chemical_1', 'chemical_2']
+
+let comboBoxes = [
+	document.getElementById(comboBoxID[0]),
+	document.getElementById(comboBoxID[1])
+];
+
+IP = new inputHandler('myChart');
+
+// Wiring event listeners
+comboBoxes[0].addEventListener("change", function() {IP.updateChemicalInput(comboBoxID[0])});
+comboBoxes[1].addEventListener("change", function() {IP.updateChemicalInput(comboBoxID[1])});
