@@ -52,6 +52,17 @@ class Distillation {
 		}
 	}
 
+	updateProperty(ID, newValue) {
+		properties = ['chemical_1', 'chemical_2', 'R', 'xB', 'xF', 'xD', 'murphree']
+		for (let i = 0; i < properties.length; i++) {
+			if (properties[i] == ID) {
+				this.modifiableProperties[ID] = newValue;
+				break;
+			}
+		}
+
+	}
+
 	get binarySystem() {return this._binarySystem};
 	get towerSpecs() {return this._towerSpecs};
 
@@ -227,13 +238,13 @@ class DistillationTower {
 
 		this.m = {};
 		this.b = {};
-		this.calculateOperatingParameters();
+		this.updateOperatingParameters();
 	}
 
 	set xD(xD) {
 		if (this._xF < xD && xD <= 1) {
 			this._xD = xD;
-			this.calculateOperatingParameters();
+			this.updateOperatingParameters();
 		} else {
 			console.log("Failed to set new xD");
 		}
@@ -242,7 +253,7 @@ class DistillationTower {
 	set xF(xF) {
 		if (this._xB < xF && xF < this._xD) {
 			this._xF = xF;
-			this.calculateOperatingParameters();
+			this.updateOperatingParameters();
 		} else {
 			console.log("Failed to set new xF");
 		}
@@ -251,15 +262,15 @@ class DistillationTower {
 	set xB(xB) {
 		if (0 < xB && xB < this._xF) {
 			this._xB = xB;
-			this.calculateOperatingParameters();
+			this.updateOperatingParameters();
 		} else {
 			console.log("Failed to set new xB");
 		}
 	}
 
-	set R(_R) {
+	set R(R) {
 		this._R = R;
-		this.calculateOperatingParameters();
+		this.updateOperatingParameters();
 	}
 
 	set murphree(murphree) {
@@ -276,7 +287,7 @@ class DistillationTower {
 	get R()  {return this._R}
 	get murphree() {return this._murphree}
 
-	calculateOperatingParameters() {
+	updateOperatingParameters() {
 		this.m['rectifying'] = this._R / (this._R + 1);
 		this.b['rectifying'] = this._xD / (this._R + 1);
 
@@ -515,7 +526,7 @@ class Plotter {
 		element['label'] = name;
 		element['data'] = data;
 		if (dashed) {
-			element['borderDash'] = [10, 5];
+			element['borderDash'] = [10, 2];
 		}
 
 		this.config['data']['datasets'].push(element);
@@ -555,7 +566,7 @@ class Plotter {
 
 	addDiagonalPlot() {
 		let diagonalPoints = [{x: 0, y: 0},		{x: 1, y: 1}];
-		this.addPlotElement('Diagonal', diagonalPoints, 'white', true);
+		this.addPlotElement('Diagonal', diagonalPoints, 'black', true);
 	}
 
 	plotTxy(objVLE) {
@@ -602,7 +613,6 @@ class inputHandler {
 		this.tower = new DistillationTower();
 		this.system = new BinarySystem(initialChemical1, initialChemical2);
 		this.distillation = new Distillation(this.system, this.tower);
-		this.distillation.murphree = 0.67;
 
 		// Plotting
 		this.plt = new Plotter(chartID);
@@ -673,44 +683,26 @@ class inputHandler {
 
 	updateTowerInput(ID) {
 		let textBox = document.getElementById(ID);
-		let text = textBox.value;
-		let changed = false;
-		
+		let text = parseFloat(textBox.value);
+
 		// Update Distillation variable retrieval to get rid of this BS
 		if (ID == 'R') {
 			this.distillation.R = text;
-			if (this.distillation.R == text) {
-				changed = true;
-			}
 
 		} else if (ID == 'xB') {
 			this.distillation.xB = text;
-			if (this.distillation.xB == text) {
-				changed = true;
-			}
-
+		
 		} else if (ID == 'xF') {
 			this.distillation.xF = text;
-			if (this.distillation.xF == text) {
-				changed = true;
-			}
-
+		
 		} else if (ID == 'xD') {
 			this.distillation.xD = text;
-			if (this.distillation.xD == text) {
-				changed = true;
-			}
-
+		
 		} else if (ID == 'murphree') {
 			this.distillation.murphree = text;
-			if (this.distillation.murphree == text) {
-				changed = true;
-			}
 		}
 
-		if (changed) {
-			this.updatePlot();
-		}
+		this.updatePlot();
 	}
 
 	updateTitle() {
@@ -726,7 +718,11 @@ class inputHandler {
 
 		optimalStage.textContent = this.distillation.totalStages;
 		feedStage.textContent = this.distillation.feedStage;
+	}
 
+	changeGraph(inputObject) {
+		this.pltType = inputObject.value;
+		this.updatePlot();
 	}
 
 	confirmNotPresent(chemicalName) {
@@ -745,11 +741,21 @@ let comboBoxID = ['chemical_1', 'chemical_2']
 
 let comboBoxes = [
 	document.getElementById(comboBoxID[0]),
-	document.getElementById(comboBoxID[1])
-];
+	document.getElementById(comboBoxID[1])];
+let graphInput = document.getElementById("graphType");
+let numericInputs = ['R', 'xB', 'xF', 'xD', 'murphree'];
+let defaultNumerics = [1.0, 0.2, 0.4, 0.95, 1.0];
 
 IP = new inputHandler('myChart');
 
 // Wiring event listeners
 comboBoxes[0].addEventListener("change", function() {IP.updateChemicalInput(comboBoxID[0])});
 comboBoxes[1].addEventListener("change", function() {IP.updateChemicalInput(comboBoxID[1])});
+graphInput.addEventListener("change", function() {IP.changeGraph(graphInput)});
+
+for (let i = 0; i < numericInputs.length; i++) {
+	let currentElement = document.getElementById(numericInputs[i]);
+	currentElement.value = defaultNumerics[i];
+	currentElement.addEventListener("change", function() {IP.updateTowerInput(numericInputs[i])})
+}
+
