@@ -1,3 +1,16 @@
+/*
+Antoine's Coeffiecents:
+https://en.wikipedia.org/wiki/Antoine_equation
+
+Used to estimate vapor pressure from temperature, or temperature from vapor
+pressure, within a limited range
+
+Pressure:     log10(p) = A - B / (C + T)
+Temperature:  T = B / (A - log10(p)) - C
+
+Units used: Kelvin, mmHg
+*/
+
 export const chemicals = {
   'water': [18.3036, 3816.44,  -46.13],
   'n-butane': [15.6782,2154.90,-34.42],
