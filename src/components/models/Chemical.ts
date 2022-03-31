@@ -1,7 +1,13 @@
-import { chemicals } from '../constants/antoines.ts';
+import { chemicals } from '../constants/antoines';
 
 class Chemical {
-  constructor(name) {
+  _name: string
+  _boilingPt: number
+  _A: number
+  _B: number
+  _C: number
+
+  constructor(name: string) {
     this._name = name
 
     let antoines = chemicals[name]
@@ -12,7 +18,7 @@ class Chemical {
     this._boilingPt = this._B / (this._A - Math.log(760)) - this._C
   }
 
-  getSatPressure = tempK => Math.exp(this._A - this._B / (this._C + tempK))
+  getSatPressure = (tempK: number) => Math.exp(this._A - this._B / (this._C + tempK))
 
   get name () { return this._name }
   get boilingPt () { return this._boilingPt }

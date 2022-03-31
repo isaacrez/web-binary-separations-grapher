@@ -11,7 +11,7 @@ Temperature:  T = B / (A - log10(p)) - C
 Units used: Kelvin, mmHg
 */
 
-export const chemicals = {
+export const chemicals: any = {
   'water': [18.3036, 3816.44,  -46.13],
   'n-butane': [15.6782,2154.90,-34.42],
   'n-pentane': [15.8333,2477.07,-39.94],

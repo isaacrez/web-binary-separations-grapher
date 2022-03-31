@@ -1,14 +1,8 @@
 import React from 'react'
 
-function Selector(props) {
-  /*
-  REQUIRED:
-   options:   List of potential values
-   setValue:  Value setter
-   value:     Value set
-  */
+function Selector(props: {options: any[], setValue: any, value: any}) {
   const options = props.options.map(v => <option value={v} key={v}>{v}</option>)
-  const onChange = e => props.setValue(e.target.value)
+  const onChange = (e: any) => props.setValue(e.target.value)
 
   return (
     <div className="select">

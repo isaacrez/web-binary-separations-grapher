@@ -1,9 +1,10 @@
 import React from 'react'
 import './styles/App.css'
 
-import { chemicals } from './constants/antoines.ts'
-import Chemical from './models/Chemical.ts'
-import Selector from './Selector.tsx'
+import { chemicals } from './constants/antoines'
+import Chemical from './models/Chemical'
+import VLE from './models/VLE'
+import Selector from './Selector'
 
 function App() {
   const [lightName, setLightName] = React.useState("benzene")
@@ -22,12 +23,14 @@ function App() {
 
   const light = new Chemical(lightName)
   const heavy = new Chemical(heavyName)
+  const vleObj = new VLE(light, heavy)
 
   const chemicalNames = Object.keys(chemicals)
 
   return (
     <div className="App">
       <h1>Binary Separations</h1>
+
       <p>{light.name} boils at {Math.round(light.boilingPt)}K!</p>
       <Selector value={lightName} setValue={setLightName} options={chemicalNames.filter(n => n !== heavyName)} />
 
