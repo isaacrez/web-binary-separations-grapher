@@ -31,11 +31,13 @@ function App() {
     <div className="App">
       <h1>Binary Separations</h1>
 
-      <p>{light.name} boils at {Math.round(light.boilingPt)}K!</p>
-      <Selector value={lightName} setValue={setLightName} options={chemicalNames.filter(n => n !== heavyName)} />
-
-      <p>{heavy.name} boils at {Math.round(heavy.boilingPt)}K!</p>
-      <Selector value={heavyName} setValue={setHeavyName} options={chemicalNames.filter(n => n !== lightName)} />
+      <div className="chemical-wrapper">
+        <p>Chemical Selection</p>
+        <div style={{ display: "flex", flexDirection: "row", gap: "30px" }}>
+          <Selector value={lightName} setValue={setLightName} options={chemicalNames.filter(n => n !== heavyName)} />
+          <Selector value={heavyName} setValue={setHeavyName} options={chemicalNames.filter(n => n !== lightName)} />
+        </div>
+      </div>
     </div>
   );
 }

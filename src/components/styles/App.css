@@ -62,3 +62,15 @@ select,
   background-color: var(--select-arrow);
   clip-path: polygon(50% 35%, 100% 0, 50% 100%, 0 0);
 }
+
+.chemical-wrapper {
+  padding: 20px;
+  border: white solid 2px;
+  border-radius: 15px;
+  background-image: linear-gradient(to top, rgba(150, 150, 225, 0.20), rgba(150, 150, 200, 0));
+}
+
+.chemical-wrapper p {
+  font-size: 1.5rem;
+  margin-top: 0;
+}
