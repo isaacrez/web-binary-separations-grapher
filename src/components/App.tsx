@@ -9,6 +9,17 @@ function App() {
   const [lightName, setLightName] = React.useState("benzene")
   const [heavyName, setHeavyName] = React.useState("toluene")
 
+  React.useEffect(() => {
+    const light = new Chemical(lightName)
+    const heavy = new Chemical(heavyName)
+
+    if (light.getBoilingPt() > heavy.getBoilingPt()) {
+      let temp = lightName
+      setLightName(heavyName)
+      setHeavyName(temp)
+    }
+  }, [lightName, heavyName])
+
   const light = new Chemical(lightName)
   const heavy = new Chemical(heavyName)
 
