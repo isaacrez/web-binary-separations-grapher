@@ -13,7 +13,7 @@ function App() {
     const light = new Chemical(lightName)
     const heavy = new Chemical(heavyName)
 
-    if (light.getBoilingPt() > heavy.getBoilingPt()) {
+    if (light.boilingPt > heavy.boilingPt) {
       let temp = lightName
       setLightName(heavyName)
       setHeavyName(temp)
@@ -28,10 +28,10 @@ function App() {
   return (
     <div className="App">
       <h1>Binary Separations</h1>
-      <p>{light.getName()} boils at {Math.round(light.getBoilingPt())}K!</p>
+      <p>{light.name} boils at {Math.round(light.boilingPt)}K!</p>
       <Selector value={lightName} setValue={setLightName} options={chemicalNames.filter(n => n !== heavyName)} />
 
-      <p>{heavy.getName()} boils at {Math.round(heavy.getBoilingPt())}K!</p>
+      <p>{heavy.name} boils at {Math.round(heavy.boilingPt)}K!</p>
       <Selector value={heavyName} setValue={setHeavyName} options={chemicalNames.filter(n => n !== lightName)} />
     </div>
   );

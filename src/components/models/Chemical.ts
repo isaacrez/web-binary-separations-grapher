@@ -2,22 +2,20 @@ import { chemicals } from '../constants/antoines.ts';
 
 class Chemical {
   constructor(name) {
-    this.name = name
+    this._name = name
 
     let antoines = chemicals[name]
     this._A = antoines[0]
     this._B = antoines[1]
     this._C = antoines[2]
 
-    this.boilingPt = this._calculateBoilingPoint()
+    this._boilingPt = this._B / (this._A - Math.log(760)) - this._C
   }
-
-  _calculateBoilingPoint = () => this._B / (this._A - Math.log(760)) - this._C
 
   getSatPressure = tempK => Math.exp(this._A - this._B / (this._C + tempK))
 
-  getName = () => this.name
-  getBoilingPt = () => this.boilingPt
+  get name () { return this._name }
+  get boilingPt () { return this._boilingPt }
 }
 
 export default Chemical
