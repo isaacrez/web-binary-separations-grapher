@@ -1,3 +1,9 @@
+:root {
+  --select-border: lightblue;
+  --select-focus: blue;
+  --select-arrow: var(--select-border);
+}
+
 .App {
   text-align: center;
   background-color: #282c34;
@@ -8,4 +14,51 @@
   justify-content: center;
   font-size: calc(10px + 2vmin);
   color: white;
+}
+
+select {
+  color: white;
+  background-color: grey;
+}
+
+select,
+.select:after {
+  grid-area: select;
+}
+
+.select {
+  display: grid;
+  grid-template-areas: "select";
+  align-items: center;
+
+  width: 100%;
+  min-width: 15ch;
+  max-width: 30ch;
+  border-radius: 0.25em;
+  padding: 0.25em 0.5em;
+
+  background-color: grey;
+  border-color: lightblue;
+  border-style: solid;
+  border-width: 0 2px 2px 0;
+
+  font-size: 1.25rem;
+  color: white;
+  cursor: pointer;
+  line-height: 1.1;
+}
+
+.select:hover {
+  opacity: .85;
+  border-color: var(--select-border);
+  border-width: 0 1px 1px 0;
+}
+
+.select::after {
+  justify-self: end;
+  content: "";
+  width: 0.8em;
+  height: 0.5em;
+  background-color: var(--select-arrow);
+  clip-path: polygon(50% 35%, 100% 0, 50% 100%, 0 0);
 }

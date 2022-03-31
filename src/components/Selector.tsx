@@ -11,7 +11,7 @@ function Selector(props) {
   const onChange = e => props.setValue(e.target.value)
 
   return (
-    <div>
+    <div className="select">
       <select value={props.value} onChange={onChange}>
         {options}
       </select>
