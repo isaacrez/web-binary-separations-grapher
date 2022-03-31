@@ -1,7 +1,8 @@
 import React from 'react'
 import './styles/App.css'
 
-import Chemical from './models/Chemical'
+import { chemicals } from './constants/antoines.ts'
+import Chemical from './models/Chemical.ts'
 import Selector from './Selector.tsx'
 
 function App() {
