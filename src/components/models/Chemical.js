@@ -1,4 +1,4 @@
-import {chemicals} from './constants/antoines.ts';
+import { chemicals } from '../constants/antoines.ts';
 
 class Chemical {
   constructor(name) {
@@ -19,3 +19,5 @@ class Chemical {
   getName = () => this.name
   getBoilingPt = () => this.boilingPt
 }
+
+export default Chemical
