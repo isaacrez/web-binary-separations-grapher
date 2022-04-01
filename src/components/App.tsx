@@ -1,10 +1,10 @@
 import React from 'react'
-import Plot from 'react-plotly.js'
 import './styles/App.css'
 
 import { chemicals } from './constants/antoines'
 import Chemical from './models/Chemical'
 import VLE from './models/VLE'
+import GraphVLE from './graph/GraphVLE'
 import Selector from './Selector'
 
 function App() {
@@ -28,25 +28,11 @@ function App() {
 
   const chemicalNames = Object.keys(chemicals)
 
-  const liquidGraph: any = {
-    x: vleObj.temperatureRange,
-    y: vleObj.xMoleFraction,
-    name: "liquid",
-    type:'scatter'
-  }
-
-  const gaseousGraph: any = {
-    x: vleObj.temperatureRange,
-    y: vleObj.yMoleFraction,
-    name: "gas",
-    type:'scatter'
-  }
-
   return (
     <div className="App">
       <h1>Binary Separations</h1>
 
-      <Plot data={[liquidGraph, gaseousGraph]} layout={{}} />
+      <GraphVLE VLE={vleObj} />
 
       <div className="chemical-wrapper">
         <p>Chemical Selection</p>
