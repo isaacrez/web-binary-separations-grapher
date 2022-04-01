@@ -14,9 +14,9 @@ function GraphTxy(props: {VLE: VLE}) {
       range: [0, 1]
     },
     legend: {
-      x: 1,
+      x: 0.985,
       xanchor: 'right',
-      y: 1,
+      y: 0.985,
       bgcolor: 'rgba(1, 1, 1, 0.75)'
     },
     font: {
