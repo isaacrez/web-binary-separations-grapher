@@ -44,7 +44,7 @@ class VLE {
     this._xMoleFraction = []
     this._yMoleFraction = []
 
-    for (let t in this._temperatureRange) {
+    for (let t of this._temperatureRange) {
       let liquidFraction = this._calculateX(t)
       this._xMoleFraction.push(liquidFraction)
       this._yMoleFraction.push(this._calculateY(t, liquidFraction))
