@@ -2,9 +2,8 @@ import React from 'react'
 import Plot from 'react-plotly.js'
 import VLE from '../models/VLE'
 
-function GraphVLE(props: {VLE: VLE}) {
+function GraphTxy(props: {VLE: VLE}) {
   const layout: any = {
-    title: 'Vapor-Liquid Equilibrium',
     xaxis: {
       title: 'Temperature (K)',
       gridcolor: 'rgba(255, 255, 255,0.25)'
@@ -58,4 +57,4 @@ function GraphVLE(props: {VLE: VLE}) {
   )
 }
 
-export default GraphVLE;
+export default GraphTxy;
