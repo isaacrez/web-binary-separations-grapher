@@ -5,7 +5,7 @@ https://en.wikipedia.org/wiki/Antoine_equation
 Used to estimate vapor pressure from temperature, or temperature from vapor
 pressure, within a limited range
 
-Pressure:     log10(p) = A - B / (C + T)
+Pressure:     log(p) = A - B / (C + T)
 Temperature:  T = B / (A - log10(p)) - C
 
 Units used: Kelvin, mmHg
