@@ -11,6 +11,7 @@ import Selector from './Selector'
 function App() {
   const [lightName, setLightName] = React.useState("benzene")
   const [heavyName, setHeavyName] = React.useState("toluene")
+  const [open, setOpen] = React.useState(true)
 
   React.useEffect(() => {
     const light = new Chemical(lightName)
@@ -31,17 +32,21 @@ function App() {
 
   return (
     <div className="App">
-      <h1>Binary Separations</h1>
+      <button className="side-button" onClick={() => {setOpen(!open)}}>{open ? "<<" : ">>"}</button>
 
-      <GraphTxy VLE={vleObj} />
-      <GraphVLE VLE={vleObj} />
-
-      <div className="chemical-wrapper">
-        <p>Chemical Selection</p>
-        <div style={{ display: "flex", flexDirection: "row", gap: "30px" }}>
-          <Selector value={lightName} setValue={setLightName} options={chemicalNames.filter(n => n !== heavyName)} />
-          <Selector value={heavyName} setValue={setHeavyName} options={chemicalNames.filter(n => n !== lightName)} />
+      {open && <div className="side-bar">
+        <div>
+          <p>Chemical Selection</p>
+          <Selector label="Light" value={lightName} setValue={setLightName} options={chemicalNames.filter(n => n !== heavyName)} />
+          <Selector label="Heavy" value={heavyName} setValue={setHeavyName} options={chemicalNames.filter(n => n !== lightName)} />
         </div>
+      </div>}
+
+      <div>
+        <h1>Binary Separations</h1>
+
+        <GraphTxy VLE={vleObj} />
+        <GraphVLE VLE={vleObj} />
       </div>
     </div>
   );
