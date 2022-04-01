@@ -1,12 +1,11 @@
 import React from 'react'
-import Plot from 'react-plotly.js'
-
 import './styles/App.css'
 
 import { chemicals } from './constants/antoines'
 import Chemical from './models/Chemical'
 import VLE from './models/VLE'
 import GraphTxy from './graph/GraphTxy'
+import GraphVLE from './graph/GraphVLE'
 import Selector from './Selector'
 
 function App() {
@@ -35,7 +34,7 @@ function App() {
       <h1>Binary Separations</h1>
 
       <GraphTxy VLE={vleObj} />
-      <Plot data={[{ x: vleObj.xMoleFraction, y: vleObj.yMoleFraction }, { x: [0, 1], y: [0, 1] }]} layout={{}} />
+      <GraphVLE VLE={vleObj} />
 
       <div className="chemical-wrapper">
         <p>Chemical Selection</p>
