@@ -1,17 +1,21 @@
 import React from 'react'
 import './styles/App.css'
 
-import { chemicals } from './constants/antoines'
 import Chemical from './models/Chemical'
 import VLE from './models/VLE'
 import GraphTxy from './graph/GraphTxy'
 import GraphVLE from './graph/GraphVLE'
-import Selector from './Selector'
+import Siderail from './Siderail'
 
 function App() {
   const [lightName, setLightName] = React.useState("benzene")
   const [heavyName, setHeavyName] = React.useState("toluene")
-  const [open, setOpen] = React.useState(true)
+  const siderailProps = {
+    lightName: lightName,
+    setLightName: setLightName,
+    heavyName: heavyName,
+    setHeavyName: setHeavyName
+  }
 
   React.useEffect(() => {
     const light = new Chemical(lightName)
@@ -28,26 +32,13 @@ function App() {
   const heavy = new Chemical(heavyName)
   const vleObj = new VLE(light, heavy)
 
-  const chemicalNames = Object.keys(chemicals)
 
   return (
     <div className="App">
-      <button className="side-button" onClick={() => {setOpen(!open)}}>{open ? "<<" : ">>"}</button>
-
-      {open && <div className="side-bar">
-        <div>
-          <p>Chemical Selection</p>
-          <Selector label="Light" value={lightName} setValue={setLightName} options={chemicalNames.filter(n => n !== heavyName)} />
-          <Selector label="Heavy" value={heavyName} setValue={setHeavyName} options={chemicalNames.filter(n => n !== lightName)} />
-        </div>
-      </div>}
-
-      <div>
-        <h1>Binary Separations</h1>
-
-        <GraphTxy VLE={vleObj} />
-        <GraphVLE VLE={vleObj} />
-      </div>
+      <Siderail {...siderailProps} />
+      <h1>Binary Separations</h1>
+      <GraphTxy VLE={vleObj} />
+      <GraphVLE VLE={vleObj} />
     </div>
   );
 }
